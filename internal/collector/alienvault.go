@@ -29,7 +29,6 @@ func CollectAlienVault(domain string) []SubdomainRecord {
 	subdomains := make([]SubdomainRecord, 0)
 	subdomainsSet := make(map[string]bool)
 	serviceUrl := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
-	fmt.Printf("domain: %s\n", serviceUrl)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", serviceUrl, nil)
