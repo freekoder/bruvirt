@@ -31,8 +31,8 @@ func main() {
 }
 
 func collectSubdomains(domain string) error {
-	subdomains := collector.CollectSubdomains(domain)
-	fmt.Printf("subdomains: %v", subdomains)
+	_ = collector.CollectSubdomains(domain)
+	//fmt.Printf("subdomains: %v", subdomains)
 	return nil
 }
 

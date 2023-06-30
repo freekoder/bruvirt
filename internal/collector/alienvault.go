@@ -1,11 +1,13 @@
 package collector
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type AlienVaultRecord struct {
@@ -25,13 +27,15 @@ type AlienVaultResponse struct {
 	PassiveDNS []AlienVaultRecord `json:"passive_dns"`
 }
 
-func CollectAlienVault(domain string) []SubdomainRecord {
+func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan []SubdomainRecord, domain string) {
+	defer wg.Done()
+
 	subdomains := make([]SubdomainRecord, 0)
 	subdomainsSet := make(map[string]bool)
 	serviceUrl := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
 
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", serviceUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", serviceUrl, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -46,12 +50,12 @@ func CollectAlienVault(domain string) []SubdomainRecord {
 	}()
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return subdomains
+		return
 	}
 	var serviceResponse AlienVaultResponse
 	err = json.Unmarshal(content, &serviceResponse)
 	if err != nil {
-		return subdomains
+		return
 	}
 	for _, record := range serviceResponse.PassiveDNS {
 		subdomainsSet[record.Hostname] = true
@@ -59,5 +63,5 @@ func CollectAlienVault(domain string) []SubdomainRecord {
 	for subdomain := range subdomainsSet {
 		subdomains = append(subdomains, SubdomainRecord{Subdomain: subdomain})
 	}
-	return subdomains
+	resultChan <- subdomains
 }
