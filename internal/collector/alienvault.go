@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type AlienVaultRecord struct {
@@ -27,8 +28,10 @@ type AlienVaultResponse struct {
 	PassiveDNS []AlienVaultRecord `json:"passive_dns"`
 }
 
-func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan []SubdomainRecord, domain string) {
+func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan BlockResult, domain string) {
 	defer wg.Done()
+
+	startedAt := time.Now()
 
 	subdomains := make([]SubdomainRecord, 0)
 	subdomainsSet := make(map[string]bool)
@@ -63,5 +66,13 @@ func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan 
 	for subdomain := range subdomainsSet {
 		subdomains = append(subdomains, SubdomainRecord{Subdomain: subdomain})
 	}
-	resultChan <- subdomains
+	endedAt := time.Now()
+
+	resultChan <- BlockResult{
+		Name:       "alienvault",
+		Domain:     domain,
+		StartedAt:  startedAt,
+		EndedAt:    endedAt,
+		Subdomains: subdomains,
+	}
 }
