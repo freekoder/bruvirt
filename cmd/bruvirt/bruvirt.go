@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	fmt.Println("bruvirt v0.0.1")
+	fmt.Println("bruvirt v0.0.2\n")
 	domain := "palantir.com"
 
 	collectSubdomains(domain)
@@ -31,8 +31,11 @@ func main() {
 }
 
 func collectSubdomains(domain string) error {
-	_ = collector.CollectSubdomains(domain)
-	//fmt.Printf("subdomains: %v", subdomains)
+	result := collector.CollectSubdomains(domain)
+	fmt.Printf("total subdomains: %d\n\n", len(result.Subdomains))
+	for subdomain, sources := range result.Subdomains {
+		fmt.Printf("%s %s\n", subdomain, sources)
+	}
 	return nil
 }
 
