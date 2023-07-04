@@ -16,12 +16,28 @@ func CollectAnubis(ctx context.Context, wg *sync.WaitGroup, resultChan chan Bloc
 	serviceQueryUrl := fmt.Sprintf("https://jonlu.ca/anubis/subdomains/%s", domain)
 	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "anubis",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 
 	var serviceResponse []string
 	err = json.Unmarshal(content, &serviceResponse)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "anubis",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 

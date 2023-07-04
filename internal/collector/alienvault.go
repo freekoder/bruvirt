@@ -33,12 +33,28 @@ func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan 
 	serviceQueryUrl := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
 	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "alienvault",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 
 	var serviceResponse AlienVaultResponse
 	err = json.Unmarshal(content, &serviceResponse)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "alienvault",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 

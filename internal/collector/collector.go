@@ -59,7 +59,7 @@ func CollectSubdomains(domain string) Result {
 
 	collectorResult := Result{Domain: domain, Subdomains: make(map[string]SourceList)}
 	for result := range resultChan {
-		fmt.Printf("%s - %s - %d\n", result.Name, result.Duration(), len(result.Subdomains))
+		fmt.Printf("%s - %s - %d - (%v)\n", result.Name, result.Duration(), len(result.Subdomains), result.Error)
 		for _, subdomain := range result.Subdomains {
 			collectorResult.Add(subdomain.Subdomain, result.Name)
 		}
@@ -89,6 +89,7 @@ func doServiceRequest(ctx context.Context, serviceUrl string) ([]byte, error) {
 	return content, nil
 }
 
+// TODO: move unmarshaller to try cycle
 func runTimes(ctx context.Context, requestFunc func(context.Context, string) ([]byte, error), url string, times int) ([]byte, error) {
 	var content []byte
 	var lastError error

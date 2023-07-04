@@ -22,12 +22,28 @@ func CollectCrtSh(ctx context.Context, wg *sync.WaitGroup, resultChan chan Block
 	serviceQueryUrl := fmt.Sprintf("https://crt.sh/?q=.%s&output=json", domain)
 	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "crtsh",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 
 	var serviceResponse []CertRecord
 	err = json.Unmarshal(content, &serviceResponse)
 	if err != nil {
+		resultChan <- BlockResult{
+			Name:       "crtsh",
+			Domain:     domain,
+			StartedAt:  startedAt,
+			EndedAt:    time.Now(),
+			Error:      err,
+			Subdomains: make([]SubdomainRecord, 0),
+		}
 		return
 	}
 
