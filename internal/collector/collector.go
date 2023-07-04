@@ -3,6 +3,8 @@ package collector
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -17,6 +19,7 @@ type BlockResult struct {
 	StartedAt  time.Time
 	EndedAt    time.Time
 	Subdomains []SubdomainRecord
+	Error      error
 }
 
 func (r BlockResult) Duration() time.Duration {
@@ -39,7 +42,7 @@ func (r *Result) Add(subdomain, source string) {
 
 func CollectSubdomains(domain string) Result {
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	wg.Add(3)
@@ -62,4 +65,46 @@ func CollectSubdomains(domain string) Result {
 		}
 	}
 	return collectorResult
+}
+
+func doServiceRequest(ctx context.Context, serviceUrl string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", serviceUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "Golang_Spider_Bot/3.0")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return content, nil
+}
+
+func runTimes(ctx context.Context, requestFunc func(context.Context, string) ([]byte, error), url string, times int) ([]byte, error) {
+	var content []byte
+	var lastError error
+	for i := 0; i < times; i++ {
+		reqContent, err := requestFunc(ctx, url)
+		if err != nil {
+			lastError = err
+			if err == context.DeadlineExceeded || err == context.Canceled {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+			continue
+		} else {
+			content = reqContent
+			break
+		}
+	}
+	return content, lastError
 }

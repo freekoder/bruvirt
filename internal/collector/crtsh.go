@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -21,34 +19,19 @@ func CollectCrtSh(ctx context.Context, wg *sync.WaitGroup, resultChan chan Block
 
 	startedAt := time.Now()
 
-	subdomains := make([]SubdomainRecord, 0)
-	subdomainsSet := make(map[string]bool)
-	serviceUrl := fmt.Sprintf("https://crt.sh/?q=.%s&output=json", domain)
+	serviceQueryUrl := fmt.Sprintf("https://crt.sh/?q=.%s&output=json", domain)
+	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
+	if err != nil {
+		return
+	}
 
-	client := &http.Client{}
-	req, err := http.NewRequestWithContext(ctx, "GET", serviceUrl, nil)
-	if err != nil {
-		return
-	}
-	req.Header.Set("User-Agent", "Golang_Spider_Bot/3.0")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return
-	}
 	var serviceResponse []CertRecord
 	err = json.Unmarshal(content, &serviceResponse)
 	if err != nil {
 		return
 	}
 
+	subdomainsSet := make(map[string]bool)
 	for _, record := range serviceResponse {
 		subdomain := record.CommonName
 		if strings.HasPrefix(subdomain, "*.") {
@@ -71,9 +54,11 @@ func CollectCrtSh(ctx context.Context, wg *sync.WaitGroup, resultChan chan Block
 		}
 	}
 
+	subdomains := make([]SubdomainRecord, 0)
 	for subdomain := range subdomainsSet {
 		subdomains = append(subdomains, SubdomainRecord{Subdomain: subdomain})
 	}
+
 	endedAt := time.Now()
 
 	resultChan <- BlockResult{

@@ -16,7 +16,7 @@ import (
 
 func main() {
 	fmt.Println("bruvirt v0.0.2\n")
-	domain := "palantir.com"
+	domain := "sberbank.ru"
 
 	collectSubdomains(domain)
 
