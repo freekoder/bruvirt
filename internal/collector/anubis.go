@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -14,30 +13,10 @@ func CollectAnubis(ctx context.Context, wg *sync.WaitGroup, resultChan chan Bloc
 	startedAt := time.Now()
 
 	serviceQueryUrl := fmt.Sprintf("https://jonlu.ca/anubis/subdomains/%s", domain)
-	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
-	if err != nil {
-		resultChan <- BlockResult{
-			Name:       "anubis",
-			Domain:     domain,
-			StartedAt:  startedAt,
-			EndedAt:    time.Now(),
-			Error:      err,
-			Subdomains: make([]SubdomainRecord, 0),
-		}
-		return
-	}
-
 	var serviceResponse []string
-	err = json.Unmarshal(content, &serviceResponse)
+	err := doRequestTimes(ctx, serviceQueryUrl, &serviceResponse, 5)
 	if err != nil {
-		resultChan <- BlockResult{
-			Name:       "anubis",
-			Domain:     domain,
-			StartedAt:  startedAt,
-			EndedAt:    time.Now(),
-			Error:      err,
-			Subdomains: make([]SubdomainRecord, 0),
-		}
+		resultChan <- MakeErrorBlockResult("anubis", domain, startedAt, err)
 		return
 	}
 
@@ -50,13 +29,6 @@ func CollectAnubis(ctx context.Context, wg *sync.WaitGroup, resultChan chan Bloc
 	for subdomain := range subdomainsSet {
 		subdomains = append(subdomains, SubdomainRecord{Subdomain: subdomain})
 	}
-	endedAt := time.Now()
 
-	resultChan <- BlockResult{
-		Name:       "anubis",
-		Domain:     domain,
-		StartedAt:  startedAt,
-		EndedAt:    endedAt,
-		Subdomains: subdomains,
-	}
+	resultChan <- MakeSuccessBlockResult("anubis", domain, startedAt, subdomains)
 }

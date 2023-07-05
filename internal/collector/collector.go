@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,7 +43,7 @@ func (r *Result) Add(subdomain, source string) {
 
 func CollectSubdomains(domain string) Result {
 	var wg sync.WaitGroup
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	wg.Add(3)
@@ -89,12 +90,10 @@ func doServiceRequest(ctx context.Context, serviceUrl string) ([]byte, error) {
 	return content, nil
 }
 
-// TODO: move unmarshaller to try cycle
-func runTimes(ctx context.Context, requestFunc func(context.Context, string) ([]byte, error), url string, times int) ([]byte, error) {
-	var content []byte
+func doRequestTimes(ctx context.Context, url string, response interface{}, times int) error {
 	var lastError error
 	for i := 0; i < times; i++ {
-		reqContent, err := requestFunc(ctx, url)
+		reqContent, err := doServiceRequest(ctx, url)
 		if err != nil {
 			lastError = err
 			if err == context.DeadlineExceeded || err == context.Canceled {
@@ -103,9 +102,35 @@ func runTimes(ctx context.Context, requestFunc func(context.Context, string) ([]
 			time.Sleep(500 * time.Millisecond)
 			continue
 		} else {
-			content = reqContent
+			err = json.Unmarshal(reqContent, &response)
+			if err != nil {
+				lastError = err
+				time.Sleep(500 * time.Millisecond)
+				continue
+			}
 			break
 		}
 	}
-	return content, lastError
+	return lastError
+}
+
+func MakeErrorBlockResult(name string, domain string, startedAt time.Time, err error) BlockResult {
+	return BlockResult{
+		Name:       name,
+		Domain:     domain,
+		StartedAt:  startedAt,
+		EndedAt:    time.Now(),
+		Error:      err,
+		Subdomains: make([]SubdomainRecord, 0),
+	}
+}
+
+func MakeSuccessBlockResult(name string, domain string, startedAt time.Time, subdomains []SubdomainRecord) BlockResult {
+	return BlockResult{
+		Name:       name,
+		Domain:     domain,
+		StartedAt:  startedAt,
+		EndedAt:    time.Now(),
+		Subdomains: subdomains,
+	}
 }

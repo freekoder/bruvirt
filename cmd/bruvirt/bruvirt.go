@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"crypto/tls"
 	"fmt"
 	"github.com/freekoder/bruvirt/internal/collector"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,12 +14,9 @@ import (
 
 func main() {
 	fmt.Println("bruvirt v0.0.2\n")
-	domain := "sberbank.ru"
+	domain := "hackerone.com"
 
 	collectSubdomains(domain)
-
-	//ips := readIPS(domain)
-	//vhosts := readVhosts(domain)
 
 	//for idx, ip := range ips {
 	//	fmt.Printf("checking: %d - %s\n", idx, ip)
@@ -91,48 +86,4 @@ func checkVhost(ip string, vhost string) error {
 	statusCode := resp.StatusCode
 	fmt.Printf("response %s-%s:\t\tsc:%d size:%d lines:%d\n", ip, vhost, statusCode, len(body), len(lines))
 	return nil
-}
-
-func readIPS(domain string) []string {
-	file, err := os.Open(fmt.Sprintf("tests/%s/ips", domain))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	ips := make([]string, 0)
-	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	for scanner.Scan() {
-		ips = append(ips, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	return ips
-}
-
-func readVhosts(domain string) []string {
-	file, err := os.Open(fmt.Sprintf("tests/%s/vhosts", domain))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		_ = file.Close()
-	}()
-
-	vhosts := make([]string, 0)
-	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	for scanner.Scan() {
-		vhosts = append(vhosts, scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-	return vhosts
 }

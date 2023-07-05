@@ -2,7 +2,6 @@ package collector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -31,30 +30,10 @@ func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan 
 	startedAt := time.Now()
 
 	serviceQueryUrl := fmt.Sprintf("https://otx.alienvault.com/api/v1/indicators/domain/%s/passive_dns", domain)
-	content, err := runTimes(ctx, doServiceRequest, serviceQueryUrl, 5)
-	if err != nil {
-		resultChan <- BlockResult{
-			Name:       "alienvault",
-			Domain:     domain,
-			StartedAt:  startedAt,
-			EndedAt:    time.Now(),
-			Error:      err,
-			Subdomains: make([]SubdomainRecord, 0),
-		}
-		return
-	}
-
 	var serviceResponse AlienVaultResponse
-	err = json.Unmarshal(content, &serviceResponse)
+	err := doRequestTimes(ctx, serviceQueryUrl, &serviceResponse, 5)
 	if err != nil {
-		resultChan <- BlockResult{
-			Name:       "alienvault",
-			Domain:     domain,
-			StartedAt:  startedAt,
-			EndedAt:    time.Now(),
-			Error:      err,
-			Subdomains: make([]SubdomainRecord, 0),
-		}
+		resultChan <- MakeErrorBlockResult("alienvault", domain, startedAt, err)
 		return
 	}
 
@@ -67,13 +46,6 @@ func CollectAlienVault(ctx context.Context, wg *sync.WaitGroup, resultChan chan 
 	for subdomain := range subdomainsSet {
 		subdomains = append(subdomains, SubdomainRecord{Subdomain: subdomain})
 	}
-	endedAt := time.Now()
 
-	resultChan <- BlockResult{
-		Name:       "alienvault",
-		Domain:     domain,
-		StartedAt:  startedAt,
-		EndedAt:    endedAt,
-		Subdomains: subdomains,
-	}
+	resultChan <- MakeSuccessBlockResult("alienvault", domain, startedAt, subdomains)
 }
