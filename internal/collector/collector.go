@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -27,11 +26,39 @@ func (r BlockResult) Duration() time.Duration {
 	return r.EndedAt.Sub(r.StartedAt)
 }
 
+func (r BlockResult) ErrorString() string {
+	if r.Error != nil {
+		return r.Error.Error()
+	} else {
+		return ""
+	}
+}
+
 type SourceList []string
+
+type CollectorStat struct {
+	Name     string
+	Duration time.Duration
+	Count    int
+	Error    string
+}
 
 type Result struct {
 	Domain     string
+	Stats      []CollectorStat
 	Subdomains map[string]SourceList
+}
+
+func (r *Result) AddBucket(bucket BlockResult) {
+	r.Stats = append(r.Stats, CollectorStat{
+		Name:     bucket.Name,
+		Duration: bucket.Duration(),
+		Count:    len(bucket.Subdomains),
+		Error:    bucket.ErrorString(),
+	})
+	for _, subdomain := range bucket.Subdomains {
+		r.Add(subdomain.Subdomain, bucket.Name)
+	}
 }
 
 func (r *Result) Add(subdomain, source string) {
@@ -58,12 +85,10 @@ func CollectSubdomains(domain string) Result {
 		close(resultChan)
 	}()
 
-	collectorResult := Result{Domain: domain, Subdomains: make(map[string]SourceList)}
+	collectorResult := Result{Domain: domain, Stats: make([]CollectorStat, 0), Subdomains: make(map[string]SourceList)}
 	for result := range resultChan {
-		fmt.Printf("%s - %s - %d - (%v)\n", result.Name, result.Duration(), len(result.Subdomains), result.Error)
-		for _, subdomain := range result.Subdomains {
-			collectorResult.Add(subdomain.Subdomain, result.Name)
-		}
+		//fmt.Printf("%s - %s - %d - (%v)\n", result.Name, result.Duration(), len(result.Subdomains), result.Error)
+		collectorResult.AddBucket(result)
 	}
 	return collectorResult
 }
